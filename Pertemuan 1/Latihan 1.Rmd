@@ -27,3 +27,13 @@ library("nortest")
 ```
 
 
+=======
+```{r}
+
+```
+
+![](images/Screenshot 2025-08-12 204813.png)
+
+x = 3
+x
+>>>>>>> 345e0504b4dbcf7d50b968253a100becc7c2cd3a
