@@ -1,8 +1,5 @@
 ---
 title: "IPM Kota Malang"
-=======
-title: "IPM Kota Malangi"
->>>>>>> e50ba652f0b62e9c7f87f3a6f68f69764c4a94e6:Pertemuan 2/Prediksi Data IPM Kota Malang.rmd
 author: "Varel Geo"
 date: "2025-09-04"
 output:
@@ -11,7 +8,7 @@ output:
     number_sections: true
 ---
 
-#LOAD LIBRARY
+# LOAD LIBRARY
 
 ```{r}
 library("forecast")
@@ -53,7 +50,9 @@ ipm.ts
 ts.plot(ipm.ts, xlab="Time Periode", ylab="IPM Kabupaten Banyuwangi", main = "Time Series Plot of IPM")
 points(ipm.ts)
 ```
+
 # PERAMALAN
+
 ## Double Moving Average (DMA)
 ```{r}
 dt.sma <- SMA(ipm.ts, n=3)
@@ -93,6 +92,7 @@ lines(dt.gab[,6],col="red",lwd=2)
 legend("topleft",c("data aktual","data pemulusan","data peramalan"), 
        lty=8, col=c("black","green","red"), cex=0.8)
 ```
+
 ## Akurasi DMA
 
 ```{r}
@@ -107,6 +107,7 @@ row.names(akurasi.dma)<- c("SSE", "MSE", "MAPE")
 colnames(akurasi.dma) <- c("Akurasi m = 3")
 akurasi.dma
 ```
+
 
 ## Double Exponential Smoothing (DES)
 ```{r}
@@ -202,6 +203,7 @@ summary(model)
 ```
 $$ \hat{yi} = -930.18574 + 0.50107xt $$
 # PENGUJIAN ASUMSI
+
 ## Uji terhadap sisaan
 ```{r}
 sisaan<- residuals(model)
@@ -227,6 +229,7 @@ shapiro.test(sisaan)
 ks.test(sisaan, "pnorm", mean=mean(sisaan), sd=sd(sisaan))
 ```
 Tak tolak ho, sisaat mengikuti sebaran normal
+
 ## Uji Autokorelasi
 ```{r}
 #ACF dan PACF identifikasi autokorelasi
@@ -241,7 +244,8 @@ dwtest(model)
 $$ p-value = 0.001181 < 0.05 $$
 
 # PENANGANAN AUTOKORELASI
-## Metode Cochraner-Orcutt
+
+## Metode Cochrane-Orcutt
 ```{r}
 model.co <- cochrane.orcutt(model)
 model.co
@@ -249,6 +253,7 @@ model.co
 ```{r}
 dwtest(model.co)
 ```
+
 ### Manual
 ```{r}
 #rho optimum
@@ -317,6 +322,8 @@ cat("y = ", coef(modelHL)[1]/(1-0.656), "+", coef(modelHL)[2],"x", sep = "")
 #Deteksi autokorelasi
 dwtest(modelHL)
 ```
+
+# PERBANDINGAN MODEL
 
 ```{r}
 #Perbandingan
