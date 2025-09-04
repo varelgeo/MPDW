@@ -7,3 +7,317 @@ output:
     highlight: kate
     number_sections: true
 ---
+
+```{r}
+library("forecast")
+library("graphics")
+library("TTR")
+library("TSA")
+library("aTSA")
+library("lmtest")
+library("MLmetrics")
+library("car")
+library("dplyr")
+library("MASS")
+library("tsibble")
+library("tseries")
+library("ggplot2")
+library("nortest")
+```
+
+```{r}
+library("readxl")
+library("dplyr")
+```
+```{r}
+library(orcutt) #untuk membuat model regresi Cochrane-Orcutt
+library(HoRM)
+```
+
+# Input Data
+```{r}
+ipm <- read_excel("C:/Users/A S U S/Downloads/DATAIPM.xlsx")
+ipm
+```
+# EKSPLORASI DATA
+```{r}
+ipm.ts<-ts(ipm$IPM)
+ipm.ts
+```
+```{r}
+ts.plot(ipm.ts, xlab="Time Periode", ylab="IPM Kabupaten Banyuwangi", main = "Time Series Plot of IPM")
+points(ipm.ts)
+```
+# DMA
+```{r}
+dt.sma <- SMA(ipm.ts, n=3)
+dma <- SMA(dt.sma, n = 3)
+At <- 2*dt.sma - dma
+Bt <- 2/(3-1)*(dt.sma - dma)
+dt.dma<- At+Bt
+dt.ramal<- c(NA, dt.dma)
+
+t = 1:5
+f = c()
+
+for (i in t) {
+  f[i] = At[length(At)] + Bt[length(Bt)]*(i)
+}
+```
+
+```{r}
+dt.gab <- cbind(aktual = c(ipm.ts,rep(NA,5)), 
+                pemulusan1 = c(dt.sma,rep(NA,5)),
+                pemulusan2 = c(dt.dma, rep(NA,5)),
+                At = c(At, rep(NA,5)), 
+                Bt = c(Bt,rep(NA,5)),
+                ramalan = c(dt.ramal, f[-1]))
+dt.gab
+```
+
+```{r}
+#Plot time series
+ts.plot(dt.gab[,1], xlab="Time Period ", ylab="IPM", 
+        main= "DMA N=3 Data IPM", ylim=c(72,92))
+points(dt.gab[,1])
+points(dt.gab[,3])
+points(dt.gab[,6])
+lines(dt.gab[,3],col="green",lwd=2)
+lines(dt.gab[,6],col="red",lwd=2)
+legend("topleft",c("data aktual","data pemulusan","data peramalan"), 
+       lty=8, col=c("black","green","red"), cex=0.8)
+```
+
+```{r}
+#Menghitung nilai keakuratan
+error.dma = ipm.ts-dt.ramal[1:length(ipm.ts)]
+SSE.dma = sum(error.dma[6:length(ipm.ts)]^2)
+MSE.dma = mean(error.dma[6:length(ipm.ts)]^2)
+MAPE.dma = mean(abs((error.dma[6:length(ipm.ts)]/ipm.ts[6:length(ipm.ts)])*100))
+
+akurasi.dma <- matrix(c(SSE.dma, MSE.dma, MAPE.dma))
+row.names(akurasi.dma)<- c("SSE", "MSE", "MAPE")
+colnames(akurasi.dma) <- c("Akurasi m = 3")
+akurasi.dma
+```
+
+# DES
+```{r}
+#membagi training dan testing
+training<-ipm[1:10,2]
+testing<-ipm[11:15,2]
+
+#data time series
+training.ts<-ts(training)
+testing.ts<-ts(testing,start=11)
+
+#eksplorasi data
+plot(ipm.ts, col="red",main="Plot semua data")
+points(ipm.ts)
+```
+```{r}
+plot(training.ts, col="blue",main="Plot data training")
+points(training.ts)
+```
+
+Pemulusan dengan DES
+```{r}
+#Lamda dan gamma optimum
+des.opt<- HoltWinters(training.ts, gamma = FALSE)
+des.opt
+```
+```{r}
+plot(des.opt)
+legend("topleft", c("Data Aktual", "Peramalan"), col = c("black", "red"), 
+       lty = c(1,1))
+```
+
+```{r}
+#ramalan
+ramalandesopt<- forecast::forecast(des.opt, h=5)
+ramalandesopt
+```
+Akurasi DES
+```{r}
+ssedes.train<-des.opt$SSE
+msedes.train<-ssedes.train/length(training.ts)
+sisaandes<-ramalandesopt$residuals
+head(sisaandes)
+```
+```{r}
+mapedes.train <- sum(abs(sisaandes[3:length(training.ts)]/training.ts[3:length(training.ts)])*100)/length(training.ts)
+
+akurasides.opt <- matrix(c(ssedes.train,msedes.train,mapedes.train))
+row.names(akurasides.opt)<- c("SSE", "MSE", "MAPE")
+colnames(akurasides.opt) <- c("Akurasi lamda dan gamma optimum")
+akurasides.opt
+```
+```{r}
+#Akurasi data testing
+selisihdesopt<-ramalandesopt$mean-testing.ts
+selisihdesopt
+```
+```{r}
+SSEtestingdesopt<-sum(selisihdesopt^2)
+SSEtestingdesopt<-SSEtestingdesopt/length(testing.ts)
+MAPEtestingdesopt<-sum(abs(selisihdesopt/testing.ts)*100)/length(testing.ts)
+
+akurasiDesTesting <- matrix(c(SSEtestingdesopt,SSEtestingdesopt,MAPEtestingdesopt))
+row.names(akurasiDesTesting)<- c("SSE", "MSE", "MAPE")
+colnames(akurasiDesTesting) <- c("Akurasi lamda dan gamma optimum")
+akurasiDesTesting
+```
+```{r}
+cbind(akurasi.dma, akurasides.opt)
+```
+
+```{r}
+#Eksplorasi Data
+#Pembuatan Scatter Plot
+plot(ipm$Tahun,ipm$IPM, pch = 20, col = "blue",
+     main = "Scatter Plot Tahun vs Nilai IPM",
+     xlab = "Tahun",
+     ylab = "Nilai IPM")
+```
+
+```{r}
+#Menampilkan Nilai Korelasi
+cor(ipm$Tahun,ipm$IPM)
+```
+# REGRESI
+```{r}
+model <- lm(IPM ~ Tahun, data = ipm)
+summary(model)
+```
+# latex regresi
+$$ \hat{yi} = -930.18574 + 0.50107xt $$
+## Uji terhadap sisaan
+```{r}
+sisaan<- residuals(model)
+fitValue<- predict(model)
+
+#Diagnostik dengan eksploratif
+par(mfrow = c(2,2))
+qqnorm(sisaan)
+qqline(sisaan, col = "steelblue", lwd = 2)
+plot(fitValue, sisaan, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Fitted Values", main = "Sisaan vs Fitted Values")
+abline(a = 0, b = 0, lwd = 2)
+hist(sisaan, col = "steelblue")
+plot(seq(1,15,1), sisaan, col = "steelblue", pch = 20, xlab = "Sisaan", ylab = "Order", main = "Sisaan vs Order")
+lines(seq(1,15,1), sisaan, col = "red")
+abline(a = 0, b = 0, lwd = 2)
+
+```
+
+```{r}
+#Normalitas sisaan
+shapiro.test(sisaan)
+ks.test(sisaan, "pnorm", mean=mean(sisaan), sd=sd(sisaan))
+```
+Tak tolak ho, sisaat mengikuti sebaran normal
+# Diagnostik Model
+```{r}
+#ACF dan PACF identifikasi autokorelasi
+par(mfrow = c(1,2))
+acf(sisaan)
+pacf(sisaan)
+```
+Berdsaarkan plot ACF dan PACF, terlihat semua lag berada di rentang batas signifikan, sehingga dapat disimpulkan bahwa model regresi ini mengandung tidak autokorelasi.
+## Deteksi Autokorelasi
+```{r}
+dwtest(model)
+```
+# latex p value 
+$$ p-value = 0.001181 < 0.05 $$
+#Penangana Autokorelasi
+## Metode Cochraner-Orcutt
+```{r}
+model.co <- cochrane.orcutt(model)
+model.co
+```
+```{r}
+dwtest(model.co)
+```
+
+```{r}
+#rho optimum
+rho<- model.co$rho
+```
+
+
+```{r}
+#Transformasi Manual
+ipm.trans<- ipm$IPM[-1]-ipm$IPM[-15]*rho
+tahun.trans<- ipm$Tahun[-1]-ipm$Tahun[-15]*rho
+modelCOmanual<- lm(ipm.trans~tahun.trans)
+summary(modelCOmanual)
+```
+```{r}
+# uji autokorelasi
+dwtest(modelCOmanual)
+```
+Autokorelasi tidak berhasil tertangani
+## Metode Hildreth-Lu
+```{r}
+#Penanganan Autokorelasi Hildreth lu
+# Hildreth-Lu
+hildreth.lu.func<- function(r, model){
+  x <- model.matrix(model)[,-1]
+  y <- model.response(model.frame(model))
+  n <- length(y)
+  t <- 2:n
+  y <- y[t]-r*y[t-1]
+  x <- x[t]-r*x[t-1]
+  
+  return(lm(y~x))
+}
+
+#Pencariab rho yang meminimumkan SSE
+r <- c(seq(0.1,0.9, by= 0.1))
+tab <- data.frame("rho" = r, "SSE" = sapply(r, function(i){deviance(hildreth.lu.func(i, model))}))
+round(tab, 4)
+```
+```{r}
+#Rho optimal di sekitar 0.4
+rOpt <- seq(0.6,0.7, by= 0.001)
+tabOpt <- data.frame("rho" = rOpt, "SSE" = sapply(rOpt, function(i){deviance(hildreth.lu.func(i, model))}))
+head(tabOpt[order(tabOpt$SSE),])
+```
+
+```{r}
+#Grafik SSE optimum
+par(mfrow = c(1,1))
+plot(tab$SSE ~ tab$rho , type = "l", xlab = "Rho", ylab = "SSE")
+abline(v = tabOpt[tabOpt$SSE==min(tabOpt$SSE),"rho"], lty = 2, col="red",lwd=2)
+text(x=0.656, y=1.180303, labels = "rho=0.656", cex = 0.8)
+```
+```{r}
+#Model terbaik
+modelHL <- hildreth.lu.func(0.656, model)
+summary(modelHL)
+```
+```{r}
+#Transformasi Balik
+cat("y = ", coef(modelHL)[1]/(1-0.656), "+", coef(modelHL)[2],"x", sep = "")
+```
+
+```{r}
+#Deteksi autokorelasi
+dwtest(modelHL)
+```
+
+```{r}
+#Perbandingan
+sseModelawal <- anova(model)$`Sum Sq`[-1]
+sseModelCO <- anova(modelCOmanual)$`Sum Sq`[-1]
+sseModelHL <- anova(modelHL)$`Sum Sq`[-1]
+mseModelawal <- sseModelawal/length(ipm)
+mseModelCO <- sseModelCO/length(ipm)
+mseModelHL <- sseModelHL/length(ipm)
+akurasi <- matrix(c(sseModelawal,sseModelCO,sseModelHL,
+                    mseModelawal,mseModelCO,mseModelHL),nrow=2,ncol=3,byrow = T)
+colnames(akurasi) <- c("Model Awal", "Model Cochrane-Orcutt", "Model Hildreth-Lu")
+row.names(akurasi) <- c("SSE","MSE")
+akurasi
+```
+
