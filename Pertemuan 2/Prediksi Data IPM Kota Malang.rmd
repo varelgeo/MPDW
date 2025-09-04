@@ -1,5 +1,8 @@
 ---
 title: "IPM Kota Malang"
+=======
+title: "IPM Kota Malangi"
+>>>>>>> e50ba652f0b62e9c7f87f3a6f68f69764c4a94e6:Pertemuan 2/Prediksi Data IPM Kota Malang.rmd
 author: "Varel Geo"
 date: "2025-09-04"
 output:
@@ -238,7 +241,7 @@ dwtest(model)
 $$ p-value = 0.001181 < 0.05 $$
 
 # PENANGANAN AUTOKORELASI
-## Metode Cochrane-Orcutt
+## Metode Cochraner-Orcutt
 ```{r}
 model.co <- cochrane.orcutt(model)
 model.co
