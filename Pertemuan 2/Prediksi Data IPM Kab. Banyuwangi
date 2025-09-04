@@ -1,0 +1,9 @@
+---
+title: "IPM Kab. Bnaywuangi"
+author: "Varel Geo"
+date: "2025-09-04"
+output:
+  rmdformats::readthedown:
+    highlight: kate
+    number_sections: true
+---
