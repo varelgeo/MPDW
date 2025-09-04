@@ -1,5 +1,5 @@
 ---
-title: "IPM Kab. Bnaywuangi"
+title: "IPM Kota Malang"
 author: "Varel Geo"
 date: "2025-09-04"
 output:
@@ -7,6 +7,8 @@ output:
     highlight: kate
     number_sections: true
 ---
+
+#LOAD LIBRARY
 
 ```{r}
 library("forecast")
@@ -34,7 +36,7 @@ library(orcutt) #untuk membuat model regresi Cochrane-Orcutt
 library(HoRM)
 ```
 
-# Input Data
+# INPUT DATA
 ```{r}
 ipm <- read_excel("C:/Users/A S U S/Downloads/DATAIPM.xlsx")
 ipm
@@ -48,7 +50,8 @@ ipm.ts
 ts.plot(ipm.ts, xlab="Time Periode", ylab="IPM Kabupaten Banyuwangi", main = "Time Series Plot of IPM")
 points(ipm.ts)
 ```
-# DMA
+# PERAMALAN
+## Double Moving Average (DMA)
 ```{r}
 dt.sma <- SMA(ipm.ts, n=3)
 dma <- SMA(dt.sma, n = 3)
@@ -87,6 +90,7 @@ lines(dt.gab[,6],col="red",lwd=2)
 legend("topleft",c("data aktual","data pemulusan","data peramalan"), 
        lty=8, col=c("black","green","red"), cex=0.8)
 ```
+## Akurasi DMA
 
 ```{r}
 #Menghitung nilai keakuratan
@@ -101,7 +105,7 @@ colnames(akurasi.dma) <- c("Akurasi m = 3")
 akurasi.dma
 ```
 
-# DES
+## Double Exponential Smoothing (DES)
 ```{r}
 #membagi training dan testing
 training<-ipm[1:10,2]
@@ -120,12 +124,12 @@ plot(training.ts, col="blue",main="Plot data training")
 points(training.ts)
 ```
 
-Pemulusan dengan DES
 ```{r}
 #Lamda dan gamma optimum
 des.opt<- HoltWinters(training.ts, gamma = FALSE)
 des.opt
 ```
+
 ```{r}
 plot(des.opt)
 legend("topleft", c("Data Aktual", "Peramalan"), col = c("black", "red"), 
@@ -137,7 +141,7 @@ legend("topleft", c("Data Aktual", "Peramalan"), col = c("black", "red"),
 ramalandesopt<- forecast::forecast(des.opt, h=5)
 ramalandesopt
 ```
-Akurasi DES
+## Akurasi DES Data Training
 ```{r}
 ssedes.train<-des.opt$SSE
 msedes.train<-ssedes.train/length(training.ts)
@@ -152,11 +156,13 @@ row.names(akurasides.opt)<- c("SSE", "MSE", "MAPE")
 colnames(akurasides.opt) <- c("Akurasi lamda dan gamma optimum")
 akurasides.opt
 ```
+## Akurasi Data Testing
 ```{r}
 #Akurasi data testing
 selisihdesopt<-ramalandesopt$mean-testing.ts
 selisihdesopt
 ```
+
 ```{r}
 SSEtestingdesopt<-sum(selisihdesopt^2)
 SSEtestingdesopt<-SSEtestingdesopt/length(testing.ts)
@@ -171,6 +177,7 @@ akurasiDesTesting
 cbind(akurasi.dma, akurasides.opt)
 ```
 
+# PERMODELAN REGRESI
 ```{r}
 #Eksplorasi Data
 #Pembuatan Scatter Plot
@@ -184,13 +191,14 @@ plot(ipm$Tahun,ipm$IPM, pch = 20, col = "blue",
 #Menampilkan Nilai Korelasi
 cor(ipm$Tahun,ipm$IPM)
 ```
-# REGRESI
+Berdasarkan scatter plot di atas, terlihat adanya hubungan / korelasi positif antara peubah tahun dengan nilai IPM, terlihat titik-titik pada plot yang naik ke arah kanan atas. Hal tersebut juga diperkuat dengan hasil perhitungan aplikasi R di mana didapatkan nilai korelasi sebesar 0.9876656
+
 ```{r}
 model <- lm(IPM ~ Tahun, data = ipm)
 summary(model)
 ```
-# latex regresi
 $$ \hat{yi} = -930.18574 + 0.50107xt $$
+# PENGUJIAN ASUMSI
 ## Uji terhadap sisaan
 ```{r}
 sisaan<- residuals(model)
@@ -209,13 +217,14 @@ abline(a = 0, b = 0, lwd = 2)
 
 ```
 
+## Uji Normalitas
 ```{r}
 #Normalitas sisaan
 shapiro.test(sisaan)
 ks.test(sisaan, "pnorm", mean=mean(sisaan), sd=sd(sisaan))
 ```
 Tak tolak ho, sisaat mengikuti sebaran normal
-# Diagnostik Model
+## Uji Autokorelasi
 ```{r}
 #ACF dan PACF identifikasi autokorelasi
 par(mfrow = c(1,2))
@@ -223,14 +232,13 @@ acf(sisaan)
 pacf(sisaan)
 ```
 Berdsaarkan plot ACF dan PACF, terlihat semua lag berada di rentang batas signifikan, sehingga dapat disimpulkan bahwa model regresi ini mengandung tidak autokorelasi.
-## Deteksi Autokorelasi
 ```{r}
 dwtest(model)
 ```
-# latex p value 
 $$ p-value = 0.001181 < 0.05 $$
-#Penangana Autokorelasi
-## Metode Cochraner-Orcutt
+
+# PENANGANAN AUTOKORELASI
+## Metode Cochrane-Orcutt
 ```{r}
 model.co <- cochrane.orcutt(model)
 model.co
@@ -238,12 +246,11 @@ model.co
 ```{r}
 dwtest(model.co)
 ```
-
+### Manual
 ```{r}
 #rho optimum
 rho<- model.co$rho
 ```
-
 
 ```{r}
 #Transformasi Manual
@@ -257,6 +264,7 @@ summary(modelCOmanual)
 dwtest(modelCOmanual)
 ```
 Autokorelasi tidak berhasil tertangani
+
 ## Metode Hildreth-Lu
 ```{r}
 #Penanganan Autokorelasi Hildreth lu
@@ -291,6 +299,7 @@ plot(tab$SSE ~ tab$rho , type = "l", xlab = "Rho", ylab = "SSE")
 abline(v = tabOpt[tabOpt$SSE==min(tabOpt$SSE),"rho"], lty = 2, col="red",lwd=2)
 text(x=0.656, y=1.180303, labels = "rho=0.656", cex = 0.8)
 ```
+## Permodelan Regresi 
 ```{r}
 #Model terbaik
 modelHL <- hildreth.lu.func(0.656, model)
