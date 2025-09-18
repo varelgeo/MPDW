@@ -130,8 +130,9 @@ model.dlm2 <- dlm(x = train$pm25,y = train$AQI , q = 10)
 summary(model.dlm2)
 ```
 Dari hasil tersebut terdapat beberapa peubah yang berpengaruh signifikan terhadap taraf nyata 5% yaitu xt, xt-7, xt-10. Adapun keseluruhan model yang terbentuk adalah
+$$\hat{Y} = 42.535 --23.945Xt+ 14.530Xt-1 + ... -21.183Xt-7 + 3.101Xt-8...$$
 
-Adapun hasil peramalan 5 periode kedepan menggunakan model tersebut adalah sebagai berikut
+Adapun hasil peramalan 18 periode kedepan menggunakan model tersebut adalah sebagai berikut
 ```{r}
 fore.dlm2 <- forecast(model = model.dlm2, x=test$AQI, h=18)
 
@@ -142,7 +143,7 @@ mape.dlm2
 ```{r}
 GoF(model.dlm2)
 ```
-Model tersebut merupakan model yang sangat baik dengan nilai MAPE yang kurang dari 10%.
+Model tersebut merupakan model yang sangat baik dengan nilai MAPE yang hanya 0.03% kurang dari 10%.
 
 
 # MODEL AUTOREGRESIVE
@@ -165,15 +166,15 @@ AIC(model.ardl)
 BIC(model.ardl)
 ```
 
-Hasil di atas menunjukkan bahwa selain peubah xt−1, hasil uji t menunjukkan nilai-p pada peubah ≥0.05 Hal ini menunjukkan bahwa peubah xt−1 berpengaruh signifikan terhadap yt, sementara xt dan yt−1 berpengaruh signifikan terhadap yt. Model keseluruhannya adalah sebagai berikut:
-
+Hasil di atas menunjukkan bahwa selain peubah xt−1, hasil uji t menunjukkan nilai-p pada peubah ≥0.05 Hal ini menunjukkan bahwa yt−1 berpengaruh signifikan terhadap yt. Model keseluruhannya adalah sebagai berikut:
+$$\hat{Y} = 3.8364 +0.0725Xt -0.4271X(t-1) + 0.88537Y(t-1) $$
 
 ## Peramalan dan Akurasi
 ```{r}
 fore.ardl <- forecast(model = model.ardl, x=test$pm25, h=18)
 fore.ardl
 ```
-Data di atas merupakan hasil peramalan untuk 5 periode ke depan menggunakan Model Autoregressive dengan p=1 dan q=1
+Data di atas merupakan hasil peramalan untuk 18 periode ke depan menggunakan Model Autoregressive dengan p=1 dan q=1
 .
 ```{r}
 mape.ardl <- MLmetrics::MAPE(fore.ardl$forecasts, test$AQI)
@@ -214,7 +215,9 @@ summary(model.ardl.opt2)
 AIC(model.ardl.opt2)
 BIC(model.ardl.opt2)
 ```
-asil di atas menunjukkan bahwa selain peubah xt−1, hasil uji t menunjukkan nilai-p pada peubah ≥0.05 Hal ini menunjukkan bahwa peubah xt−1 berpengaruh signifikan terhadap yt, sementara xt dan yt−1 berpengaruh signifikan terhadap yt. Model keseluruhannya adalah sebagai berikut:
+Hasil di atas menunjukkan bahwa selain peubah xt−1, hasil uji t menunjukkan nilai-p pada peubah ≥0.05 Hal ini menunjukkan bahwa xt berpengaruh signifikan terhadap yt. Model keseluruhannya adalah sebagai berikut:
+
+$$\hat{Y} = 10.8906-11.1056Xt +...-0.3796Y(t-5) $$
 ```{r}
 fore.ardl.opt2 <- forecast(model = model.ardl.opt2, x=test$pm25, h=18)
 fore.ardl.opt2
@@ -226,7 +229,7 @@ mape.ardl.opt2
 ```{r}
 GoF(model.ardl.opt2)
 ```
-Berdasarkan akurasi di atas, terlihat bahwa nilai MAPE keduanya tidak jauh berbeda.
+Berdasarkan akurasi di atas, terlihat bahwa nilai MAPE sangat kecil. Jauh di bawah 10%
 
 # PEMODELAN DLM & ARDL MENGGUNAKAN PACKAGE dynlm
 ```{r}
@@ -261,11 +264,12 @@ deviance(cons_lm4)
 ```{r}
 if(require("lmtest")) encomptest(cons_lm1, cons_lm2)
 ```
-Model 1 : p-value 0.31055 (> 0.05). Artinya, penambahan lag dari Y (L(Yt)) tidak memberikan peningkatan signifikan.
-Dengan demikian, Model 1 sudah memadai.
+Model 1 : p-value 0.31055 (< 0.05). Artinya, penambahan lag dari Y (L(Yt)) memberikan peningkatan signifikan.
+Dengan demikian, Model 1 tidak cukup memadai.
 
-Model 2 : p-value = 0.00505 (< 0.01).
-Artinya, penambahan lag dari X (L(Xt)) memberikan peningkatan signifikan.Sehingga Model 2 tidak cukup memadai tanpa tambahan variabel lag dari Xt.
+Model 2 : p-value = 0.00505 (> 0.05).
+Artinya, penambahan lag dari Y (L(Yt)) tidak memberikan peningkatan signifikan.
+Dengan demikian, Model 2 sudah memadai.
 
 ## Uji Autokorelasi Residual
 ```{r}
