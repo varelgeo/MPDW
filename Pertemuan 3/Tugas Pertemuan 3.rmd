@@ -1,1 +1,350 @@
+---
+title: "Tugas Pertemuan 3 MPDW"
+author: "Varel Geo S.P"
+date: "2025-09-18"
+output:
+  rmdformats::readthedown:
+    highlight: kate
+    number_sections:true
+---
+# LIBRARY
+
+```{r}
+library("forecast")
+library("graphics")
+library("TTR")
+library("TSA")
+library("aTSA")
+library("lmtest")
+library("MLmetrics")
+library("car")
+library("dplyr")
+library("MASS")
+library("tsibble")
+library("tseries")
+library("ggplot2")
+library("nortest")
+```
+
+```{r}
+library("readxl")
+library("dplyr")
+```
+```{r}
+library("dLagM")
+```
+
+```{r}
+library(orcutt) #untuk membuat model regresi Cochrane-Orcutt
+library(HoRM)
+```
+```{r}
+library(MLmetrics) #untuk menghitung MAPE
+library(dynlm)
+library(lmtest)
+```
+
+
+# INPUT DATA
+```{r}
+data <- read.csv2("C:/Users/A S U S/Downloads/NewDelhi_Air_quality.csv", header = TRUE, sep = ",")
+data
+```
+
+```{r}
+data <- dplyr::select(data, AQI, pm25)
+data
+```
+
+```{r}
+data$AQI <- as.numeric(data$AQI)
+data$pm25 <- as.numeric(data$pm25)
+```
+```{r}
+str(data)
+```
+# SPLITTING DATA
+```{r}
+train<-data[1:54,]
+test<-data[55:72,]
+```
+
+```{r}
+train.ts<-ts(train)
+test.ts<-ts(test)
+data.ts<-ts(data)
+```
+
+# MODEL KOYCK
+## Pemodelan
+```{r}
+model.koyck <- koyckDlm(x = train$pm25, y = train$AQI)
+summary(model.koyck)
+```
+```{r}
+AIC(model.koyck)
+BIC(model.koyck)
+```
+Dari hasil tersebut, didapat bahwa peubah xt dan yt−1 memiliki nilai P−Value<0.05. Hal ini menunjukkan bahwa peubah xt dan yt−1 berpengaruh signifikan terhadap y. Adapun model keseluruhannya adalah sebagai berikut
+$$\hat{Y} = -4.77799 -0.57796Xt + 0.86690Y(t-1) $$
+
+## Peramalan dan Akurasi
+```{r}
+fore.koyck <- forecast(model = model.koyck, x=test$pm25, h=18)
+fore.koyck
+```
+```{r}
+mape.koyck <- MLmetrics::MAPE(fore.koyck$forecasts, test$AQI)
+mape.koyck
+```
+```{r}
+GoF(model.koyck)
+```
+# REGRESSION WITH DISTRIBUTED LAG
+## Pemodelan (Lag=2)
+```{r}
+model.dlm <- dlm(x = train$pm25,y = train$AQI , q = 1)
+summary(model.dlm)
+```
+## Peramalan dan Akurasi
+```{r}
+fore.dlm <- forecast(model = model.dlm, x=test$pm25, h=18)
+fore.dlm
+```
+```{r}
+mape.dlm <- MLmetrics::MAPE(fore.dlm$forecasts, test$AQI)
+mape.dlm
+```
+```{r}
+GoF(model.dlm)
+```
+## Lag Optimum
+```{r}
+finiteDLMauto(formula = AQI ~ pm25,
+              data = data.frame(train), q.min = 1, q.max = 10,
+              model.type = "dlm", error.type = "AIC", trace = TRUE)
+```
+
+```{r}
+model.dlm2 <- dlm(x = train$pm25,y = train$AQI , q = 10)
+summary(model.dlm2)
+```
+```{r}
+fore.dlm2 <- forecast(model = model.dlm2, x=test$AQI, h=18)
+
+#akurasi data test
+mape.dlm2<- MLmetrics::MAPE(fore.dlm2$forecasts, test$AQI)
+mape.dlm2
+```
+```{r}
+GoF(model.dlm2)
+```
+
+# MODEL AUTOREGRESIVE
+## Pemodelan
+```{r}
+model.ardl <- ardlDlm(x = train$pm25, y = train$AQI, p = 1 , q = 1)
+summary(model.ardl)
+```
+```{r}
+AIC(model.ardl)
+BIC(model.ardl)
+```
+```{r}
+model.ardl <- ardlDlm(formula = AQI ~ pm25, 
+                         data = train,p = 1 , q = 1)
+summary(model.ardl)
+```
+```{r}
+AIC(model.ardl)
+BIC(model.ardl)
+```
+
+
+## Peramalan dan Akurasi
+```{r}
+fore.ardl <- forecast(model = model.ardl, x=test$pm25, h=18)
+fore.ardl
+```
+```{r}
+mape.ardl <- MLmetrics::MAPE(fore.ardl$forecasts, test$AQI)
+mape.ardl
+```
+```{r}
+GoF(model.ardl)
+```
+## Lag Optimum
+```{r}
+#penentuan lag optimum
+model.ardl.opt <- ardlBoundOrders(data = data.frame(data), ic = "AIC", 
+                                  formula = AQI ~ pm25 )
+model.ardl.opt
+```
+
+```{r}
+min_p=c()
+for(i in 1:6){
+  min_p[i]=min(model.ardl.opt$Stat.table[[i]])
+}
+q_opt=which(min_p==min(min_p, na.rm = TRUE))
+p_opt=which(model.ardl.opt$Stat.table[[q_opt]] == 
+              min(model.ardl.opt$Stat.table[[q_opt]], na.rm = TRUE))
+data.frame("q_optimum" = q_opt, "p_optimum" = p_opt, 
+           "AIC"=model.ardl.opt$min.Stat)
+```
+## Pemidelan Autoregressive lag optimum
+```{r}
+model.ardl.opt2 <- ardlDlm(formula = AQI ~ pm25, 
+                             data = train,p = 15 , q = 5)
+summary(model.ardl.opt2)
+```
+```{r}
+AIC(model.ardl.opt2)
+BIC(model.ardl.opt2)
+```
+```{r}
+fore.ardl.opt2 <- forecast(model = model.ardl.opt2, x=test$pm25, h=18)
+fore.ardl.opt2
+```
+```{r}
+mape.ardl.opt2 <- MLmetrics::MAPE(fore.ardl.opt2$forecasts, test$AQI)
+mape.ardl.opt2
+```
+```{r}
+GoF(model.ardl.opt2)
+```
+
+# PEMODELAN DLM & ARDL MENGGUNAKAN PACKAGE dynlm
+```{r}
+#sama dengan model dlm q=1
+cons_lm1 <- dynlm(AQI ~ pm25+L(pm25),data = train.ts)
+
+#sama dengan model ardl p=1 q=0
+cons_lm2 <- dynlm(AQI ~ pm25+L(AQI),data = train.ts)
+
+#sama dengan ardl p=1 q=1
+cons_lm3 <- dynlm(AQI ~ pm25+L(pm25)+L(AQI),data = train.ts)
+
+#sama dengan dlm p=2
+cons_lm4 <- dynlm(AQI ~ pm25+L(pm25)+L(pm25,2),data = train.ts)
+```
+
+# Ringkasan Model
+```{r}
+summary(cons_lm1)
+summary(cons_lm2)
+summary(cons_lm3)
+summary(cons_lm4)
+```
+## SSE
+```{r}
+deviance(cons_lm1)
+deviance(cons_lm2)
+deviance(cons_lm3)
+deviance(cons_lm4)
+```
+## UI encomptest
+```{r}
+if(require("lmtest")) encomptest(cons_lm1, cons_lm2)
+```
+## Uji Autokorelasi Residual
+```{r}
+dwtest(cons_lm1)
+dwtest(cons_lm2)
+dwtest(cons_lm3)
+dwtest(cons_lm4)
+```
+## Uji Heterogenitas
+```{r}
+bptest(cons_lm1)
+bptest(cons_lm2)
+bptest(cons_lm3)
+bptest(cons_lm4)
+```
+## Uji Normalitas
+```{r}
+shapiro.test(residuals(cons_lm1))
+shapiro.test(residuals(cons_lm2))
+shapiro.test(residuals(cons_lm3))
+shapiro.test(residuals(cons_lm4))
+```
+# PERBANDINGAN MODEL
+```{r}
+akurasi <- matrix(c(mape.koyck, mape.dlm, mape.dlm2, mape.ardl, mape.ardl.opt2))
+row.names(akurasi)<- c("Koyck","DLM 1","DLM 2","Autoregressive","Autoregressive Optimum")
+colnames(akurasi) <- c("MAPE")
+akurasi
+```
+#PLOT
+```{r}
+par(mfrow=c(1,1))  # atur layout grafik tunggal
+
+# plot data aktual
+plot(test$pm25, test$AQI, type="b", col="black", ylim=c(-517,300))
+
+# tambahkan garis ramalan dari masing-masing model
+points(test$pm25, fore.koyck$forecasts, col="red");   lines(test$pm25, fore.koyck$forecasts, col="red")
+points(test$pm25, fore.dlm$forecasts, col="blue");    lines(test$pm25, fore.dlm$forecasts, col="blue")
+points(test$pm25, fore.dlm2$forecasts, col="orange"); lines(test$pm25, fore.dlm2$forecasts, col="orange")
+points(test$pm25, fore.ardl$forecasts, col="green");  lines(test$pm25, fore.ardl$forecasts, col="green")
+points(test$pm25, fore.ardl.opt2$forecasts, col="purple");  lines(test$pm25, fore.ardl.opt2$forecasts, col="purple")
+
+# legenda model
+legend("topleft",
+       c("Aktual", "Koyck","DLM 1","DLM 2", "Autoregressive", "Autoregressive Optimum"),
+       lty=1, col=c("black","red","blue","orange","green","purple"), cex=0.8)
+```
+Berdasarkan grafikm tidak dapat dilihat pola semua model. Hanya model DLM2 yang dapat dilihat. Kemudian dilakukan pengecekan selang forecasting
+```{r}
+range(test$pm25)
+range(test$AQI)
+range(fore.koyck$forecasts)
+range(fore.dlm$forecasts)
+range(fore.dlm2$forecasts)
+range(fore.ardl$forecasts)
+range(fore.ardl.opt2$forecasts)
+```
+Didapatkan bahwa MODEL DLM2 memiliki selang yang jauh berbeda dari model lainnya, sehingga plot dilakukan tanpa DLM2
+
+```{r}
+par(mfrow=c(1,1))  # atur layout grafik tunggal
+
+# plot data aktual
+plot(test$pm25, test$AQI, type="b", col="black", ylim=c(15,30))
+
+# tambahkan garis ramalan dari masing-masing model
+points(test$pm25, fore.koyck$forecasts, col="red");   lines(test$pm25, fore.koyck$forecasts, col="red")
+points(test$pm25, fore.dlm$forecasts, col="blue");    lines(test$pm25, fore.dlm$forecasts, col="blue")
+points(test$pm25, fore.ardl$forecasts, col="green");  lines(test$pm25, fore.ardl$forecasts, col="green")
+points(test$pm25, fore.ardl.opt2$forecasts, col="purple");  lines(test$pm25, fore.ardl.opt2$forecasts, col="purple")
+
+# legenda model
+legend("topleft",
+       c("Aktual", "Koyck","DLM 1", "Autoregressive", "Autoregressive Optimum"),
+       lty=1, col=c("black","red","blue","green","purple"), cex=0.8)
+```
+Data aktual cenderung menurun seiring peningkatan PM2.5, tetapi tidak sepenuhnya linier karena terdapat fluktuasi pada titik-titik tertentu. Model Koyck, DLM 1, dan Autoregressive menghasilkan garis prediksi yang lebih datar, sehingga kurang mampu menangkap variasi data aktual. Sementara itu, model Autoregressive Optimum tampak lebih fleksibel dalam mengikuti perubahan, namun sering memberikan prediksi yang terlalu jauh dari nilai aktual (underestimate pada awal, overestimate pada tengah, lalu turun drastis di akhir). Dengan demikian, meskipun model Autoregressive Optimum lebih adaptif, kestabilan prediksi lebih baik ditunjukkan oleh model Koyck, DLM 1, dan Autoregressive, meski dengan konsekuensi kehilangan detail fluktuasi aktual.
+```{r}
+par(mfrow=c(1,1))  # layout grafik tunggal
+
+# buat sumbu X sebagai indeks waktu
+t <- 1:nrow(test)
+
+# plot data aktual
+plot(t, test$AQI, type="b", col="black", ylim=c(15,30),
+     xlab="Waktu (periode)", ylab="AQI", main="Perbandingan Aktual vs Prediksi")
+
+# tambahkan garis ramalan dari masing-masing model
+points(t, fore.koyck$forecasts, col="red");   lines(t, fore.koyck$forecasts, col="red")
+points(t, fore.dlm$forecasts, col="blue");    lines(t, fore.dlm$forecasts, col="blue")
+points(t, fore.ardl$forecasts, col="green");  lines(t, fore.ardl$forecasts, col="green")
+points(t, fore.ardl.opt2$forecasts, col="purple");  lines(t, fore.ardl.opt2$forecasts, col="purple")
+
+# legenda model
+legend("topleft",
+       c("Aktual", "Koyck","DLM 1", "Autoregressive", "Autoregressive Optimum"),
+       lty=1, col=c("black","red","blue","green","purple"), cex=0.8)
+
+```
+Grafik di atas menunjukkan perbandingan nilai aktual indeks kualitas udara (AQI) dengan hasil prediksi menggunakan beberapa model deret waktu, yaitu Koyck, DLM 1, Autoregressive, dan Autoregressive Optimum. Garis hitam putus-putus menggambarkan data aktual, sementara garis berwarna merepresentasikan hasil prediksi tiap model. Secara umum, terlihat bahwa model Koyck (garis merah) dan DLM 1 (garis biru) menghasilkan prediksi yang relatif stabil di sekitar nilai rata-rata AQI, sehingga kurang mampu mengikuti fluktuasi aktual. Model Autoregressive (garis hijau) sedikit lebih adaptif, namun tetap belum dapat menangkap pola naik-turun dengan baik. Sementara itu, model Autoregressive Optimum (garis ungu) menunjukkan pola yang lebih dinamis dan cukup mengikuti perubahan aktual, meskipun pada beberapa periode prediksi terlihat berlebihan (overestimate) atau terlalu rendah (underestimate). Dengan demikian, meskipun model autoregressive optimum terlihat paling responsif terhadap perubahan, stabilitas jangka panjang lebih baik ditunjukkan oleh model Koyck dan DLM 1.
 
