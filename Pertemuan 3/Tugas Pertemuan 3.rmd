@@ -124,11 +124,14 @@ finiteDLMauto(formula = AQI ~ pm25,
               data = data.frame(train), q.min = 1, q.max = 10,
               model.type = "dlm", error.type = "AIC", trace = TRUE)
 ```
-
+Berdasarkan output tersebut, lag optimum didapatkan ketika lag=10. Selanjutnya dilakukan pemodelan untuk lag=10
 ```{r}
 model.dlm2 <- dlm(x = train$pm25,y = train$AQI , q = 10)
 summary(model.dlm2)
 ```
+Dari hasil tersebut terdapat beberapa peubah yang berpengaruh signifikan terhadap taraf nyata 5% yaitu xt, xt-7, xt-10. Adapun keseluruhan model yang terbentuk adalah
+
+Adapun hasil peramalan 5 periode kedepan menggunakan model tersebut adalah sebagai berikut
 ```{r}
 fore.dlm2 <- forecast(model = model.dlm2, x=test$AQI, h=18)
 
@@ -139,6 +142,8 @@ mape.dlm2
 ```{r}
 GoF(model.dlm2)
 ```
+Model tersebut merupakan model yang sangat baik dengan nilai MAPE yang kurang dari 10%.
+
 
 # MODEL AUTOREGRESIVE
 ## Pemodelan
@@ -160,12 +165,16 @@ AIC(model.ardl)
 BIC(model.ardl)
 ```
 
+Hasil di atas menunjukkan bahwa selain peubah xt−1, hasil uji t menunjukkan nilai-p pada peubah ≥0.05 Hal ini menunjukkan bahwa peubah xt−1 berpengaruh signifikan terhadap yt, sementara xt dan yt−1 berpengaruh signifikan terhadap yt. Model keseluruhannya adalah sebagai berikut:
+
 
 ## Peramalan dan Akurasi
 ```{r}
 fore.ardl <- forecast(model = model.ardl, x=test$pm25, h=18)
 fore.ardl
 ```
+Data di atas merupakan hasil peramalan untuk 5 periode ke depan menggunakan Model Autoregressive dengan p=1 dan q=1
+.
 ```{r}
 mape.ardl <- MLmetrics::MAPE(fore.ardl$forecasts, test$AQI)
 mape.ardl
@@ -173,6 +182,7 @@ mape.ardl
 ```{r}
 GoF(model.ardl)
 ```
+Berdasarkan akurasi di atas, terlihat bahwa nilai MAPE keduanya tidak jauh berbeda. Artinya, model regresi dengan distribusi lag ini tidak overfitted atau underfitted
 ## Lag Optimum
 ```{r}
 #penentuan lag optimum
@@ -192,7 +202,9 @@ p_opt=which(model.ardl.opt$Stat.table[[q_opt]] ==
 data.frame("q_optimum" = q_opt, "p_optimum" = p_opt, 
            "AIC"=model.ardl.opt$min.Stat)
 ```
-## Pemidelan Autoregressive lag optimum
+Dari tabel di atas, dapat terlihat bahwa nilai AIC terendah didapat ketika p=15 dan q=5, yaitu sebesar -20,56587. Artinya, model autoregressive optimum didapat ketika p=6 dan q=1
+Selanjutnya dapat dilakukan pemodelan dengan nilai p dan q optimum seperti inisialisasi di langkah sebelumnya.
+## Pemodelan Autoregressive lag optimum
 ```{r}
 model.ardl.opt2 <- ardlDlm(formula = AQI ~ pm25, 
                              data = train,p = 15 , q = 5)
@@ -202,6 +214,7 @@ summary(model.ardl.opt2)
 AIC(model.ardl.opt2)
 BIC(model.ardl.opt2)
 ```
+asil di atas menunjukkan bahwa selain peubah xt−1, hasil uji t menunjukkan nilai-p pada peubah ≥0.05 Hal ini menunjukkan bahwa peubah xt−1 berpengaruh signifikan terhadap yt, sementara xt dan yt−1 berpengaruh signifikan terhadap yt. Model keseluruhannya adalah sebagai berikut:
 ```{r}
 fore.ardl.opt2 <- forecast(model = model.ardl.opt2, x=test$pm25, h=18)
 fore.ardl.opt2
@@ -213,6 +226,7 @@ mape.ardl.opt2
 ```{r}
 GoF(model.ardl.opt2)
 ```
+Berdasarkan akurasi di atas, terlihat bahwa nilai MAPE keduanya tidak jauh berbeda.
 
 # PEMODELAN DLM & ARDL MENGGUNAKAN PACKAGE dynlm
 ```{r}
@@ -247,6 +261,12 @@ deviance(cons_lm4)
 ```{r}
 if(require("lmtest")) encomptest(cons_lm1, cons_lm2)
 ```
+Model 1 : p-value 0.31055 (> 0.05). Artinya, penambahan lag dari Y (L(Yt)) tidak memberikan peningkatan signifikan.
+Dengan demikian, Model 1 sudah memadai.
+
+Model 2 : p-value = 0.00505 (< 0.01).
+Artinya, penambahan lag dari X (L(Xt)) memberikan peningkatan signifikan.Sehingga Model 2 tidak cukup memadai tanpa tambahan variabel lag dari Xt.
+
 ## Uji Autokorelasi Residual
 ```{r}
 dwtest(cons_lm1)
@@ -261,6 +281,12 @@ bptest(cons_lm2)
 bptest(cons_lm3)
 bptest(cons_lm4)
 ```
+Jika p-value > 0.05 → tidak ada heteroskedastisitas
+Jika p-value ≤ 0.05 → ada heteroskedastisitas.
+Uji Normalitas
+H0: Residual berdistribusi normal.
+
+H1: Residual tidak berdistribusi normal.
 ## Uji Normalitas
 ```{r}
 shapiro.test(residuals(cons_lm1))
@@ -268,6 +294,8 @@ shapiro.test(residuals(cons_lm2))
 shapiro.test(residuals(cons_lm3))
 shapiro.test(residuals(cons_lm4))
 ```
+Jika p-value > 0.05 → gagal tolak H0 → residual normal.
+Jika p-value ≤ 0.05 → tolak H0 → residual tidak normal.
 # PERBANDINGAN MODEL
 ```{r}
 akurasi <- matrix(c(mape.koyck, mape.dlm, mape.dlm2, mape.ardl, mape.ardl.opt2))
@@ -275,6 +303,7 @@ row.names(akurasi)<- c("Koyck","DLM 1","DLM 2","Autoregressive","Autoregressive 
 colnames(akurasi) <- c("MAPE")
 akurasi
 ```
+Berdasarkan nilai MAPE, model paling optimum didapat pada Model Koyck karena memiliki nilai MAPE yang terkecil.
 #PLOT
 ```{r}
 par(mfrow=c(1,1))  # atur layout grafik tunggal
@@ -347,4 +376,3 @@ legend("topleft",
 
 ```
 Grafik di atas menunjukkan perbandingan nilai aktual indeks kualitas udara (AQI) dengan hasil prediksi menggunakan beberapa model deret waktu, yaitu Koyck, DLM 1, Autoregressive, dan Autoregressive Optimum. Garis hitam putus-putus menggambarkan data aktual, sementara garis berwarna merepresentasikan hasil prediksi tiap model. Secara umum, terlihat bahwa model Koyck (garis merah) dan DLM 1 (garis biru) menghasilkan prediksi yang relatif stabil di sekitar nilai rata-rata AQI, sehingga kurang mampu mengikuti fluktuasi aktual. Model Autoregressive (garis hijau) sedikit lebih adaptif, namun tetap belum dapat menangkap pola naik-turun dengan baik. Sementara itu, model Autoregressive Optimum (garis ungu) menunjukkan pola yang lebih dinamis dan cukup mengikuti perubahan aktual, meskipun pada beberapa periode prediksi terlihat berlebihan (overestimate) atau terlalu rendah (underestimate). Dengan demikian, meskipun model autoregressive optimum terlihat paling responsif terhadap perubahan, stabilitas jangka panjang lebih baik ditunjukkan oleh model Koyck dan DLM 1.
-
