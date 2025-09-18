@@ -5,7 +5,7 @@ date: "2025-09-18"
 output:
   rmdformats::readthedown:
     highlight: kate
-    number_sections:true
+    number_sections: true
 ---
 # LIBRARY
 
