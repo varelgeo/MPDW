@@ -1,1 +1,171 @@
+---
+title: "Tugas Pertemuan 4 MPDW"
+author: "Varel Geo S.P"
+date: "2025-09-22"
+output:
+  rmdformats::readthedown:
+    highlight: kate
+    number_sections: true
+---
+# LOAD LIBRARY
+```{r}
+library("forecast")
+library("graphics")
+library("TTR")
+library("TSA")
+library("aTSA")
+library("lmtest")
+library("MLmetrics")
+library("car")
+library("dplyr")
+library("MASS")
+library("tsibble")
+library("tseries")
+library("ggplot2")
+library("nortest")
+```
+
+```{r}
+library("readxl")
+library("dplyr")
+```
+```{r}
+library("dLagM")
+```
+
+```{r}
+library(orcutt) #untuk membuat model regresi Cochrane-Orcutt
+library(HoRM)
+```
+```{r}
+library(MLmetrics) #untuk menghitung MAPE
+library(dynlm)
+library(lmtest)
+```
+# PROSES MA(2)
+## Manual
+```{r}
+set.seed(1037)           # reproducibility
+n <- 300                 # panjang data
+wn <- rnorm(n, mean=0, sd=1)  # white noise
+
+ma <- numeric(n)         # vektor kosong untuk menampung hasil
+ma[1] <- wn[1]           # nilai pertama (belum ada lag)
+ma[2] <- wn[2] + 0.4*wn[1]   # nilai kedua (baru ada lag 1)
+
+```
+
+```{r}
+# mulai dari i=3 karena butuh lag-2
+for(i in 3:n){
+   ma[i] <- wn[i] + 0.4 * wn[i-1] + 0.6 * wn[i-2]
+}
+
+ma <- ts(ma)  # ubah jadi time series
+```
+```{r}
+ma
+```
+
+
+## Arima.sim
+```{r}
+ma2 <- arima.sim(list(order = c(0,0,2), ma = c(0.4, 0.6)), n = 300)
+ma2
+
+```
+
+## Plot Time Series
+```{r}
+plot(ma, main="Simulasi MA(2) manual", ylab="Y_t")
+```
+
+## Plot ACF
+```{r}
+acf(ma)
+```
+
+## Plot PACF
+```{r}
+pacf(ma)
+```
+
+## Plot EACF
+```{r}
+TSA::eacf(ma)
+```
+## Scatter Plot Antar Lag
+### Korelasi antara Yt dengan Y(t-1)
+```{r}
+#Yt
+yt_ma <- ma[-1]
+yt_ma
+```
+```{r}
+#Yt-1
+yt_1_ma <- ma[-300]
+yt_1_ma
+```
+```{r}
+plot(y=yt_ma,x=yt_1_ma)
+```
+
+### Korelasi antara Yt dengan Y(t-2)
+```{r}
+#Yt
+yt_ma2 <- ma[-c(1,2)]
+yt_ma2
+```
+```{r}
+#Yt-2
+yt_2_ma <- ma[-c(299,300)]
+yt_2_ma
+```
+
+### Korelasi antara Yt dengan Y(t-3)
+```{r}
+#Yt
+yt_ma3 <- ma[-c(1,2,3)]
+yt_ma3
+```
+```{r}
+#Yt-3
+yt_3_ma <- ma[-c(298,299,300)]
+yt_3_ma
+```
+
+## Aukokorelasi
+
+```{r}
+cor(yt_ma,yt_1_ma)
+```
+
+```{r}
+cor(yt_ma2,yt_2_ma)
+```
+```{r}
+cor(yt_ma3,yt_3_ma)
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
