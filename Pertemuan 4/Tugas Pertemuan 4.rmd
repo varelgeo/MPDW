@@ -54,9 +54,9 @@ library(lmtest)
 ```{r}
 set.seed(1037)           # reproducibility
 n <- 300                 # panjang data
-white <- rnorm(n, mean=0, sd=1)  # white noise
-
+white <- rnorm(n)  # white noise
 ```
+
 ```{r}
 # MA(2) Manual
 ma<-white[c(1,2)]
@@ -69,7 +69,6 @@ ma
 ```
 
 ## Arima.sim
-
 ```{r}
 set.seed(1037)
 ma2 <- arima.sim(list(order = c(0,0,2), ma = c(0.4, 0.6)), n = 300)
@@ -81,25 +80,26 @@ ma2
 ```{r}
 plot(ma, main="Simulasi MA(2) manual", ylab="Y_t")
 ```
-
+Grafik menunjukkan fluktuasi acak di sekitar mean ≈ 0. Tidak ada tren naik/turun jangka panjang → data terlihat stasioner. Varians relatif konstan dari awal hingga akhi
 ## Plot ACF
 
 ```{r}
 acf(ma)
 ```
+ACF menunjukkan cut-off pada lag ke-2, setelah itu nilai korelasi turun mendekati nol.Pola ini khas untuk proses MA(2): autokorelasi hanya signifikan sampai lag ke-2, lalu terputus. Hal ini menguatkan bahwa data memang berasal dari proses MA(2).
 
 ## Plot PACF
 
 ```{r}
 pacf(ma)
 ```
-
+PACF menunjukkan banyak lag dengan nilai kecil dan cepat menurun, tidak ada cut-off yang jelas. Pola ini sesuai dengan proses MA, karena pada MA(q) biasanya PACF tidak terputus secara tajam (bisa menyerupai “tailing off”). Artinya PACF bukan indikator utama untuk orde MA, tapi mendukung bahwa ini bukan AR murni (karena tidak ada cut-off jelas pada PACF awal).
 ## Plot EACF
 
 ```{r}
 TSA::eacf(ma)
 ```
-
+Berdasarkan pola segitiga nol pada plot EACF, terlihat bahwa segitiga nol berada pada ordo AR(0) dan ordo MA(2).
 ## Scatter Plot Antar Lag
 
 ### Korelasi antara Yt dengan Y(t-1)
@@ -110,6 +110,15 @@ yt_ma <- ma[-1]
 #Yt-1
 yt_1_ma <- ma[-300]
 plot(y=yt_ma,x=yt_1_ma)
+```
+
+```{r}
+#Arimasim
+#Yt
+yt_mas <- ma2[-1]
+#Yt-1
+yt_1_mas <- ma2[-300]
+plot(y=yt_mas,x=yt_1_mas)
 ```
 
 
@@ -123,6 +132,12 @@ plot(y=yt_ma2,x=yt_2_ma)
 ```
 
 
+```{r}
+#Arimasim
+yt_ma2s <- ma2[-c(1,2)]
+yt_2_mas <- ma2[-c(299,300)]
+plot(y=yt_ma2s,x=yt_2_mas)
+```
 ### Korelasi antara Yt dengan Y(t-3)
 
 ```{r}
@@ -132,7 +147,12 @@ yt_3_ma <- ma[-c(298,299,300)]
 plot(y=yt_ma3,x=yt_3_ma)
 ```
 
-
+```{r}
+#Yt Arimasim
+yt_ma3s <- ma2[-c(1,2,3)]
+yt_3_mas <- ma2[-c(298,299,300)]
+plot(y=yt_ma3s,x=yt_3_mas)
+```
 ## Aukokorelasi Data vs Teoritis
 
 ```{r}
@@ -145,6 +165,18 @@ cor(yt_ma2,yt_2_ma)
 
 ```{r}
 cor(yt_ma3,yt_3_ma)
+```
+
+```{r}
+cor(yt_mas,yt_1_mas)
+```
+
+```{r}
+cor(yt_ma2s,yt_2_mas)
+```
+
+```{r}
+cor(yt_ma3s,yt_3_mas)
 ```
 
 $$
@@ -160,7 +192,7 @@ $$
 $$
 \rho_k = 0, \quad k > 2
 $$
-
+Ketiga nilai autokorelasi baik yang dihitung dari data maupun nilai teoritis menunjukkan hasil yang cukup mirip, yaitu pada lag 1 sekitar 0.42, lag 2 sekitar 0.39, dan lag 3 mendekati 0.
 
 # PROSES AR(2)
 
@@ -189,26 +221,27 @@ ar2_sim
 ## Plot Time Series
 
 ```{r}
-ts.plot(ar)
+ts.plot(ar2)
 ```
-
+Data berfluktuasi di sekitar mean ≈ 0. Tidak ada tren naik/turun jangka panjang  data stasioner. Ada indikasi bahwa nilai sekarang dipengaruhi nilai sebelumnya (ada “clustering” naik/turun) sesuai karakter AR
 ## Plot ACF
 
 ```{r}
-acf(ar)
+acf(ar2)
 ```
-
+ACF menurun secara bertahap (tailing off), tidak cut-off pada lag tertentu.Pola ini khas untuk model AR(p). Penurunan terlihat cukup lambat, yang cocok dengan AR(2).
 ## Plot PACF
 
 ```{r}
-pacf(ar)
+pacf(ar2)
 ```
-
+PACF menunjukkan cut-off yang jelas pada lag ke-2. Setelah lag ke-2, semua nilai PACF tidak signifikan (dalam batas kepercayaan). Pola ini khas untuk model AR(2), karena PACF berhenti pada lag p.
 ## Plot EACF
 
 ```{r}
-eacf(ar)
+eacf(ar2)
 ```
+Berdasarkan pola segitiga nol pada plot EACF, terlihat bahwa segitiga nol muncul pada ordo AR(2). Hal ini mendukung bahwa data mengikuti proses AR(2).
 
 ## Scatter Plot Antar Lag
 
@@ -216,9 +249,9 @@ eacf(ar)
 
 ```{r}
 #Yt
-yt_ar <- ar[-1]
+yt_ar <- ar2[-1]
 #Yt-1
-yt_1_ar <- ar[-300]
+yt_1_ar <- ar2[-300]
 plot(y=yt_ar,x=yt_1_ar)
 ```
 
@@ -226,9 +259,9 @@ plot(y=yt_ar,x=yt_1_ar)
 
 ```{r}
 #Yt
-yt_ar2 <- ar[-c(1,2)]
+yt_ar2 <- ar2[-c(1,2)]
 #Yt-2
-yt_2_ar <- ar[-c(299,300)]
+yt_2_ar <- ar2[-c(299,300)]
 plot(y=yt_ar2,x=yt_2_ar)
 ```
 
@@ -236,9 +269,9 @@ plot(y=yt_ar2,x=yt_2_ar)
 
 ```{r}
 #Yt
-yt_ar3 <- ar[-c(1,2,3)]
+yt_ar3 <- ar2[-c(1,2,3)]
 #Yt-3
-yt_3_ar <- ar[-c(298,299,300)]
+yt_3_ar <- ar2[-c(298,299,300)]
 plot(y=yt_ar3,x=yt_3_ar)
 ```
 
@@ -272,6 +305,7 @@ $$
 \rho_3 = \phi_1 \rho_2 + \phi_2 \rho_1 + \phi_3 \rho_0 
 = (0.5)(0.5125) + (0.2)(0.625) = 0.38125
 $$
+Ketiga nilai autokorelasi baik yang dihitung dari data maupun nilai teoritis menunjukkan hasil yang cukup mirip, yaitu pada lag 1 sekitar 0.625, lag 2 sekitar 0.5125, dan lag 3 sekitar 0.38125. Iterasi ini akan terus berlanjut pada lag-lag berikutnya dengan nilai yang akan sangat mendekati 0.
 
 # PROSES ARMA (2,2)
 
@@ -317,24 +351,25 @@ arma22_sim
 ```{r}
 plot(arma22, main="Simulasi ARMA(2,2) manual", ylab="Y_t")
 ```
-
+Pola data terlihat acak tapi tetap fluktuatif di sekitar mean nol, yang sesuai dengan karakteristik proses ARMA. Tidak ada tren jangka panjang, artinya model sudah stasioner.
 ## Plot ACF
 
 ```{r}
 acf(arma22)
 ```
-
+ACF menurun secara bertahap (tailing off).Tidak langsung terputus (cut-off), melainkan mengecil perlahan. Ini sesuai dengan perilaku model AR (p).
 ## Plot PACF
 
 ```{r}
 pacf(arma22)
 ```
-
+PACF signifikan pada lag awal (khususnya lag 1 dan 2), lalu mendekati nol setelah itu.Pola ini menunjukkan adanya komponen AR(2). Karena ada juga komponen MA(2), PACF tidak sepenuhnya cut-off, tapi dominan di awal.
 ## Plot EACF
 
 ```{r}
 TSA::eacf(arma22)
 ```
+Pada baris AR = 2 dan kolom MA = 2 terlihat mulai terbentuk blok o ke kanan bawah. Artinya model ARMA(2,2) kembali muncul sebagai kandidat kuat. Ada juga kemungkinan lain di sekitar (2,3) atau (3,2), tapi pola paling rapi tetap di (2,2).
 
 ## Scatterplot Antar Lag
 
@@ -375,3 +410,46 @@ cor(yt_arma2,yt_2_arma)
 ```{r}
 cor(yt_arma3,yt_3_arma)
 ```
+```{r}
+# Fungsi untuk menghitung ACF teoretis ARMA(2,2)
+arma22_acf <- function(phi, theta, sigma2 = 1, N = 200, maxlag = 10) {
+
+  if(length(phi) != 2 || length(theta) != 2) stop("phi and theta must be length-2 vectors")
+  phi1 <- phi[1]; phi2 <- phi[2]
+  theta1 <- theta[1]; theta2 <- theta[2]
+  
+  ar_roots <- polyroot(c(1, -phi1, -phi2))
+  if(any(Mod(ar_roots) <= 1)) {
+    warning("AR polynomial has a root inside or on unit circle: model may be non-stationary")
+  }
+  
+  psi <- numeric(N + 1)
+  psi[1] <- 1                      
+  if (N >= 1) psi[2] <- phi1 * psi[1] + theta1       
+  if (N >= 2) psi[3] <- phi1 * psi[2] + phi2 * psi[1] + theta2  
+  if (N >= 3) {
+    for(j in 4:(N+1)) {     
+      psi[j] <- phi1 * psi[j-1] + phi2 * psi[j-2]
+    }
+  }
+  
+  gamma_k <- function(k) {
+    Jmax <- N - k
+    s <- sum( psi[1:(Jmax+1)] * psi[(1+k):(Jmax+1+k)] )
+    return(sigma2 * s)
+  }
+  
+  gamma_vals <- sapply(0:maxlag, gamma_k)
+  rho_vals <- gamma_vals / gamma_vals[1]
+  names(rho_vals) <- paste0("rho", 0:maxlag)
+  return(list(psi = psi, gamma = gamma_vals, rho = rho_vals))
+}
+
+phi <- c(0.5, 0.2)
+theta <- c(0.4, 0.6)
+res <- arma22_acf(phi = phi, theta = theta, sigma2 = 1, N = 300, maxlag = 3)
+
+
+round(res$rho, 6)
+```
+
