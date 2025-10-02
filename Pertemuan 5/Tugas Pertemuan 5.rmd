@@ -1,1 +1,172 @@
+---
+title: "Tugas Pertemuan 5 MPDW"
+author: "Varel Geo S.P"
+date: "2025-09-30"
+output:
+  rmdformats::readthedown:
+    highlight: kate
+    number_sections: true
+---
+
+# LOAD LIBRARY
+
+```{r}
+library(ggplot2)
+library(tsibble)
+library(tseries)
+library(MASS)
+```
+
+```{r}
+library("readxl")
+library("dplyr")
+```
+
+```{r}
+library("dLagM")
+```
+
+
+# INPUT DATA
+```{r}
+data <- read_excel("D:/Semester 5/MPDW/Varel.xlsx")
+head(data)
+```
+```{r}
+data$temp <- data$temp_mean
+data <- data %>% dplyr::select(date,temp)
+head(data)
+```
+```{r}
+str(data)
+dim(data)
+```
+# PLOT DATA DERET WAKTU
+```{r}
+data.ts <- ts(data$temp)
+```
+
+```{r}
+plot_stas <- data.ts |> as_tsibble() |> 
+  ggplot(aes(x = index, y = value)) + geom_line() + theme_bw() +
+  xlab("Obs") + ylab("Nilai")
+plot_stas
+```
+Berdasarkan plot di atas, terlihat bahwa data memiliki tren. Oleh karena itu, diasusikan bahwa data tidak stasioner dalam rataan.
+
+
+# PEMERIKSAAN STASIONERITAS DATA
+## Stasioneritas Rataan
+### Plot ACF
+```{r}
+acf(data.ts, main = "ACF Data Asli")
+```
+Berdasarkan plot ACF, terlihat bahwa ACF menurun perlahan dan membentuk pola tails off. ACF juga menunjukkan nilai yang signifikan setelah lag 20. Hal ini mengindikasikan bahwa data tidak stasioner dalam rataan.
+
+### Uji Augmented Dickey-Fuller (ADF)
+```{r}
+tseries::adf.test(data.ts)
+```
+$H_0 =$ Data tidak stasioner dalam rataan
+$H1_0 =$ Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapatkan $p_value = 0.07 > 0.05$ menunjukkan bahwa tolak $H_0$. Dengan demikian, dapat disimpulkan bahwa data tidak stasioner dalam rataan.
+
+## Stasioneritas Ragam
+### Plot Box-Cox
+```{r}
+index <- seq(1:250)
+
+# Box-Cox
+bc <- boxcox(
+  data.ts ~ index,
+  lambda = seq(-6, 4, by = 0.01)
+)
+```
+
+```{r}
+lambda <- bc$x[which.max(bc$y)]
+lambda
+```
+```{r}
+# Selang Kepercayaan
+ci_lambda <- bc$x[bc$y > max(bc$y) - 0.5 * qchisq(0.95, 1)]
+ci_lower <- min(ci_lambda)
+ci_upper <- max(ci_lambda)
+
+c(Batas_Bawah = ci_lower, Batas_Atas = ci_upper)
+```
+Batas bahwa $\lambda$ adalah -3.60 dan batas atas $\lambda$ adalah 1.91. Oleh karena itu, $\lambda = 1$ berada dalam selang kepercayaan. Dengan demikian, data telahh stasioner dalam ragam.
+
+# PENANGANAN KETIDAKSTASIONERAN DALAM DATA
+## Differencing
+```{r}
+# Differencing pertama pada postrend
+data_diff1 <- diff(data.ts, differences = 1)
+
+# Plot hasil differencing
+ts.plot(data_diff1,
+        main = "First-order Differencing dari Data Temperature",
+        col = "blue", lwd = 2)
+```
+Berdasarkan plot tersebut, terlihat bahwa sepertinya data sudah stasioner dalam rataan. Namun, perlu dilakukan uji formal untuk memastikannya
+```{r}
+length(data_diff1)
+```
+$$y_t = X_t - X_{t-1}$$
+## ACF Setelah Penanganan
+```{r}
+acf(data_diff1, main = "ACF Data Setelah Differencing")
+```
+Berdasarkan plot ACF, setelah dilakukan differencing ordo 1. Terlihat bahwa plot tidak signifikan pada lag 2. Hanya sedikit saja lag yang signifikan. Hal ini mengindikasikan bahwa data telah stasioner dalam rataan.
+
+## Uji ADF Setelah Penanganan
+```{r}
+tseries::adf.test(data_diff1)
+```
+$H_0 =$ Data tidak stasioner dalam rataan
+$H1_0 =$ Data stasioner dalam rataan
+
+Berdasarkan uji ADF tersebut, didapatkan $p_value = 0.01 < 0.05$ menunjukkan bahwa tolak $H_0$. Dengan demikian, dapat disimpulkan bahwa data telah stasioner dalam rataan setelah dilakukan differencing ordo 1.
+
+## Stasioneritas Ragam Setelah Penanganan
+### Plot Box-Cox
+```{r}
+min(data_diff1)
+```
+
+```{r}
+data_diff1 <- data_diff1 - min(data_diff1) + 1
+index <- seq_along(data_diff1)
+
+bc <- boxcox(data_diff1 ~ index,
+             lambda = seq(-4, 8, by = 0.01))
+```
+```{r}
+lambda <- bc$x[which.max(bc$y)]
+cat("Lambda Optimum: ", lambda)
+```
+```{r}
+ci_lambda <- bc$x[bc$y > max(bc$y) - 0.5 * qchisq(0.95, 1)]
+ci_lower <- min(ci_lambda)
+ci_upper <- max(ci_lambda)
+
+c(Batas_Bawah = ci_lower, Batas_Atas = ci_upper)
+```
+Setelah dilakukan differencing ordo 1, didapatkan batas bawah $\lambda$ adalah 0.62 dan batas atas $\lambda$ adalah 1.37. Oleh karena itu, $\lambda = 1$ berada dalam selang kepercayaan. Dengan demikian, data tetap stasioner dalam ragam setelah dilakukan differencing ordo 1.
+
+# KESIMPULAN
+Berdasarkan hasil analisis di atas. Data temperature Kabupaten Bogor telah stasioner dalam ragam, tetapi tidak stasioner dalam rataan. Penanganan yang dilakukan untuk mengataasi permasalahan tersebut adalah dengan melakukan differencing pada data, yaitu pada ordo 1. Setelah dilakukan differencing, data sudah stasioner dalam rataan dan juga stasioner dalam ragam.
+
+
+
+
+
+
+
+
+
+
+
+
 
